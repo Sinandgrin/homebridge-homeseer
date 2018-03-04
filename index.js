@@ -634,9 +634,39 @@ HomeSeerAccessory.prototype = {
             }
         }.bind(this));
     },
+    
+        getThermostatTargetHeatingCoolingState: function (callback) {
+        var ref = this.config.controlRef;
+        var url = this.access_url + "request=getstatus&ref=" + ref;
 
-    setThermostatCurrentHeatingCoolingState: function (state, callback) {
-        this.log(this.name + ': Setting thermostat current heating cooling state to %s', state);
+        httpRequest(url, 'GET', function (error, response, body) {
+            if (error) {
+                this.log(this.name + ': getThermostatCurrentHeatingCoolingState function failed: %s', error.message);
+                callback(error, 0);
+            }
+            else {
+                var status = JSON.parse(body);
+                var value = status.Devices[0].value;
+
+                this.log(this.name + ': getThermostatTargetHeatingCoolingState function succeeded: value=' + value);
+                if (this.config.stateOffValues.indexOf(value) != -1)
+                    callback(null, 0);
+                else if (this.config.stateHeatValues.indexOf(value) != -1)
+                    callback(null, 1);
+                else if (this.config.stateCoolValues.indexOf(value) != -1)
+                    callback(null, 2);
+                else if (this.config.stateAutoValues.indexOf(value) != -1)
+                    callback(null, 3);
+                else {
+                    this.log(this.name + ': Error: value for thermostat target heating cooling state not in offValues, heatValues, coolValues or autoValues');
+                    callback(null, 0);
+                }
+            }
+        }.bind(this));
+},
+
+    setThermostatTargetHeatingCoolingState: function (state, callback) {
+        this.log(this.name + ': Setting thermostat target heating cooling state to %s', state);
 
         var ref = this.config.controlRef;
         var value = 0;
@@ -652,11 +682,11 @@ HomeSeerAccessory.prototype = {
         var url = this.access_url + "request=controldevicebyvalue&ref=" + ref + "&value=" + value;
         httpRequest(url, 'GET', function (error, response, body) {
             if (error) {
-                this.log(this.name + ': setThermostatCurrentHeatingCoolingState function failed: %s', error.message);
+                this.log(this.name + ': setThermostatTargetHeatingCoolingState function failed: %s', error.message);
                 callback(error);
             }
             else {
-                this.log(this.name + ': setThermostatCurrentHeatingCoolingState function succeeded!');
+                this.log(this.name + ': setThermostatTargetHeatingCoolingState function succeeded!');
                 callback();
             }
         }.bind(this));
@@ -1248,10 +1278,10 @@ HomeSeerAccessory.prototype = {
                     .on('get', this.getThermostatCurrentHeatingCoolingState.bind(this));
                 thermostatService
                     .getCharacteristic(Characteristic.TargetHeatingCoolingState)
-                    .on('get', this.getThermostatCurrentHeatingCoolingState.bind(this));
+                    .on('get', this.getThermostatTargetHeatingCoolingState.bind(this));
                 thermostatService
                     .getCharacteristic(Characteristic.TargetHeatingCoolingState)
-                    .on('set', this.setThermostatCurrentHeatingCoolingState.bind(this));
+                    .on('set', this.setThermostatTargetHeatingCoolingState.bind(this));
                 thermostatService
                     .getCharacteristic(Characteristic.TemperatureDisplayUnits)
                     .on('get', this.getThermostatTemperatureDisplayUnits.bind(this));
